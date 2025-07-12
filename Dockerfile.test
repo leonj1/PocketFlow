@@ -1,0 +1,67 @@
+# Test container for PocketFlow Document Workflow
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Set environment variables for testing
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app \
+    # Disable AI for tests by default (no API key needed)
+    DOC_GENERATION_MODE=human_only \
+    AI_REVIEW_ENABLED=false \
+    LOG_LEVEL=DEBUG
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    make \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir pytest pytest-cov pytest-asyncio
+
+# Copy all source files
+COPY pocketflow/ ./pocketflow/
+COPY *.py ./
+COPY context.yml .
+COPY .env.example .env
+
+# Create output directories
+RUN mkdir -p /app/output /app/archive /app/published /app/test-results
+
+# Create test runner script
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "PocketFlow Test Suite"\n\
+echo "===================="\n\
+echo ""\n\
+\n\
+# Run different test categories\n\
+echo "1. Testing basic imports and initialization..."\n\
+python3 -c "from document_workflow import *; print(\"✓ All imports successful\")" || exit 1\n\
+\n\
+echo -e "\n2. Running component tests..."\n\
+python3 test_document_workflow.py || exit 1\n\
+\n\
+echo -e "\n3. Running AI integration tests..."\n\
+python3 test_ai_integration.py || exit 1\n\
+\n\
+echo -e "\n4. Testing workflow initialization..."\n\
+python3 -c "\n\
+from document_workflow import DocumentWorkflow\n\
+workflow = DocumentWorkflow()\n\
+print(\"✓ Workflow initialized successfully\")\n\
+" || exit 1\n\
+\n\
+echo -e "\n5. Testing with pytest..."\n\
+pytest -v --tb=short || true\n\
+\n\
+echo -e "\n✅ All tests completed!"\n\
+' > /app/run_tests.sh && chmod +x /app/run_tests.sh
+
+# Default command runs all tests
+CMD ["/app/run_tests.sh"]

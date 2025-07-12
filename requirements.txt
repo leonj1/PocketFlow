@@ -4,7 +4,14 @@
 # Document workflow dependencies
 PyYAML==6.0.1
 
+# AI Integration dependencies
+pydantic-ai==0.0.10
+python-dotenv==1.0.0
+pydantic>=2.5.0
+google-generativeai==0.3.2
+httpx>=0.26.0
+typing-extensions>=4.9.0
+
 # Optional: For enhanced features (uncomment if needed)
-# python-dotenv==1.0.0  # For environment configuration
 # rich==13.7.0          # For better CLI formatting
 # click==8.1.7          # For CLI argument parsing

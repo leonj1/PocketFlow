@@ -52,6 +52,8 @@ docs/
 tests/
 test_*.py
 !test_document_workflow.py
+!test_ai_integration.py
+!test_suite.py
 
 # Output directories (will be created in container)
 output/
@@ -61,7 +63,10 @@ audit_trail_*.json
 
 # Misc
 .env
-.env.*
+.env.local
+.env.development
+.env.production
+!.env.example
 *.log
 *.bak
 *.tmp

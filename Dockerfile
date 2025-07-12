@@ -23,9 +23,15 @@ COPY pocketflow/ ./pocketflow/
 
 # Copy workflow files
 COPY document_workflow.py .
+COPY ai_agent.py .
+COPY document_ai_agents.py .
 COPY context.yml .
 COPY test_document_workflow.py .
 COPY README_document_workflow.md .
+
+# Copy .env file if it exists (for development)
+# Note: In production, use environment variables or secrets management
+COPY .env* ./
 
 # Create directories for output
 RUN mkdir -p /app/output /app/archive /app/published

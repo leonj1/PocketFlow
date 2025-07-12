@@ -41,11 +41,16 @@ def test_basic_flow():
     # Test 3: Needs Assessment
     print("\n3. Testing NeedsAssessmentNode...")
     needs_node = NeedsAssessmentNode()
-    # Simulate the node without user input
-    needs_node.prep = lambda shared: {}
-    needs_node.exec = lambda prep_res: {"assessed_needs": ["Test need 1", "Test need 2"]}
-    original_collect_feedback = needs_node.collect_feedback
-    needs_node.collect_feedback = lambda prompt, options=None: "No" if options else ""
+    # Override AI if enabled to prevent API calls
+    needs_node.ai_enabled = False
+    
+    # Mock the collect_feedback method from parent class
+    def mock_collect_feedback(self, prompt, options=None):
+        return "No" if options else ""
+    
+    # Replace the method temporarily
+    import types
+    needs_node.collect_feedback = types.MethodType(mock_collect_feedback, needs_node)
     
     result = needs_node.run(shared)
     if shared["document"].get("assessed_needs"):

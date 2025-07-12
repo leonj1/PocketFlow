@@ -37,10 +37,13 @@ run:
 
 # Run tests
 test:
+	@echo "$(GREEN)Building test container...$(NC)"
+	$(DOCKER) build -f Dockerfile.test -t $(IMAGE_NAME):test .
 	@echo "$(GREEN)Running tests...$(NC)"
-	$(DOCKER) run -it --rm \
+	$(DOCKER) run --rm \
 		--name $(CONTAINER_NAME)_test \
-		$(IMAGE_NAME):$(IMAGE_TAG) test
+		-v $(PWD)/test-results:/app/test-results \
+		$(IMAGE_NAME):test
 
 # Open interactive Python shell
 shell:

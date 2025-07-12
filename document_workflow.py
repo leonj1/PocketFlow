@@ -13,9 +13,11 @@ import datetime
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 import sys
+import os
 sys.path.append(str(Path(__file__).parent))
 
 from pocketflow import Node, Flow, BaseNode
+from document_ai_agents import DocumentAiAgent, get_document_ai_agent
 
 
 # Base Classes
@@ -182,8 +184,19 @@ class ContextLoaderNode(DocumentNode):
 
 
 # Initialization Phase Nodes
-class NeedsAssessmentNode(DocumentNode):
+class NeedsAssessmentNode(ReviewNode):
     """Assess needs based on context and gather additional requirements."""
+    
+    def __init__(self):
+        super().__init__()
+        # Initialize AI agent if enabled
+        try:
+            self.ai_agent = get_document_ai_agent()
+            self.ai_enabled = self.ai_agent.is_enabled()
+        except Exception as e:
+            print(f"AI Agent initialization failed: {e}")
+            self.ai_agent = None
+            self.ai_enabled = False
     
     def exec(self, prep_res):
         return {"assessed_needs": []}
@@ -197,13 +210,38 @@ class NeedsAssessmentNode(DocumentNode):
                          f"Scope: {len(context['scope']['includes'])} items included\n"
                          f"Timeline: {context['constraints']['timeline']}")
         
-        # Simulate needs assessment
-        needs = [
-            "Clear examples for each security pattern",
-            "Integration guides for existing systems",
-            "Migration path from current practices",
-            "Performance impact analysis"
-        ]
+        # AI-powered needs assessment if enabled
+        if self.ai_enabled and self.ai_agent:
+            try:
+                print("\n🤖 Running AI needs assessment...")
+                ai_assessment = self.ai_agent.assess_needs(context)
+                
+                # Display AI assessment
+                self.format_output("AI Needs Assessment",
+                                 f"Identified Needs:\n" + "\n".join(f"  • {n}" for n in ai_assessment.identified_needs) + "\n\n"
+                                 f"Priority Areas:\n" + "\n".join(f"  • {p}" for p in ai_assessment.priority_areas) + "\n\n"
+                                 f"Potential Challenges:\n" + "\n".join(f"  • {c}" for c in ai_assessment.potential_challenges) + "\n\n"
+                                 f"Recommended Approach: {ai_assessment.recommended_approach}")
+                
+                needs = ai_assessment.identified_needs
+                
+            except Exception as e:
+                print(f"\n⚠️  AI assessment failed: {e}")
+                # Fallback to default needs
+                needs = [
+                    "Clear examples for each security pattern",
+                    "Integration guides for existing systems",
+                    "Migration path from current practices",
+                    "Performance impact analysis"
+                ]
+        else:
+            # Default needs when AI is disabled
+            needs = [
+                "Clear examples for each security pattern",
+                "Integration guides for existing systems",
+                "Migration path from current practices",
+                "Performance impact analysis"
+            ]
         
         confirm = self.collect_feedback("Are there additional needs to address?", ["Yes", "No"])
         
@@ -229,30 +267,72 @@ class NeedsAssessmentNode(DocumentNode):
 class OutlineTemplateNode(DocumentNode):
     """Generate document outline based on context and deliverables."""
     
+    def __init__(self):
+        super().__init__()
+        # Initialize AI agent if enabled
+        try:
+            self.ai_agent = get_document_ai_agent()
+            self.ai_enabled = self.ai_agent.is_enabled()
+        except Exception as e:
+            print(f"AI Agent initialization failed: {e}")
+            self.ai_agent = None
+            self.ai_enabled = False
+    
     def exec(self, prep_res):
         return {"outline": []}
     
     def post(self, shared, prep_res, exec_res):
         context = self.get_context(shared)
-        deliverables = context.get("deliverables", [])
+        document = self.get_document(shared)
+        needs = document.get("assessed_needs", [])
         
-        # Find main document deliverable
-        main_doc = next((d for d in deliverables if d["type"] == "Main Document"), None)
+        # Try AI-powered outline generation
+        if self.ai_enabled and self.ai_agent:
+            try:
+                print("\n🤖 Generating AI-powered outline...")
+                ai_outline = self.ai_agent.generate_outline(context, needs)
+                
+                # Convert AI outline to our format
+                outline = []
+                for section in ai_outline.sections:
+                    outline.append({
+                        "name": section.get("name", "Untitled Section"),
+                        "max_pages": section.get("max_pages", 5),
+                        "audience_focus": section.get("audience_focus", ["All"]),
+                        "content": "",
+                        "status": "pending"
+                    })
+                
+                print(f"  ✓ AI generated outline with {len(outline)} sections")
+                print(f"  📄 {ai_outline.structure_notes}")
+                
+            except Exception as e:
+                print(f"\n⚠️  AI outline generation failed: {e}")
+                outline = None
+        else:
+            outline = None
         
-        if not main_doc:
-            self.add_audit_entry(shared, "outline_error", "No main document found in deliverables")
-            return "error"
-        
-        # Generate outline from sections
-        outline = []
-        for section in main_doc["sections"]:
-            outline.append({
-                "name": section["name"],
-                "max_pages": section.get("max_pages", 5),
-                "audience_focus": section.get("audience_focus", ["All"]),
-                "content": "",
-                "status": "pending"
-            })
+        # Fallback to context-based outline if AI fails or is disabled
+        if not outline:
+            deliverables = context.get("deliverables", [])
+            
+            # Find main document deliverable
+            main_doc = next((d for d in deliverables if d["type"] == "Main Document"), None)
+            
+            if not main_doc:
+                self.add_audit_entry(shared, "outline_error", "No main document found in deliverables")
+                return "error"
+            
+            # Generate outline from sections
+            outline = []
+            for section in main_doc["sections"]:
+                outline.append({
+                    "name": section["name"],
+                    "max_pages": section.get("max_pages", 5),
+                    "audience_focus": section.get("audience_focus", ["All"]),
+                    "content": "",
+                    "status": "pending"
+                })
         
         self.format_output("Document Outline Generated",
                          "\n".join([f"{i+1}. {s['name']} ({s['max_pages']} pages max)" 
@@ -308,6 +388,17 @@ class RoleAssignmentNode(DocumentNode):
 class DocumentDraftingNode(DocumentNode):
     """Draft document sections based on outline and context."""
     
+    def __init__(self):
+        super().__init__()
+        # Initialize AI agent if enabled
+        try:
+            self.ai_agent = get_document_ai_agent()
+            self.ai_enabled = self.ai_agent.is_enabled()
+        except Exception as e:
+            print(f"AI Agent initialization failed: {e}")
+            self.ai_agent = None
+            self.ai_enabled = False
+    
     def exec(self, prep_res):
         return {"draft_complete": False}
     
@@ -319,30 +410,49 @@ class DocumentDraftingNode(DocumentNode):
         self.format_output("Document Drafting", 
                          f"Drafting {len(outline)} sections for: {document['title']}")
         
-        # Simulate drafting each section
+        # Track previously generated sections for context
+        previous_sections = []
+        
+        # Draft each section
         for i, section in enumerate(outline):
             if section["status"] == "pending":
                 print(f"\nDrafting section {i+1}: {section['name']}")
                 
-                # In real implementation, this would use LLM to generate content
-                # For demo, we'll use placeholder content
-                if section["name"] == "Executive Summary":
-                    content = f"""This document establishes security standards for {context['topic']}.
-                    
-Purpose: {context['purpose']}
-
-Key Requirements:
-- Authentication using OAuth 2.0 and JWT
-- Role-based authorization (RBAC)
-- Comprehensive input validation
-- Rate limiting for all endpoints
-"""
+                if self.ai_enabled and self.ai_agent:
+                    # Use AI to generate content
+                    try:
+                        print("  Using AI to generate content...")
+                        
+                        # Generate section with AI
+                        section_result = self.ai_agent.generate_section(
+                            section_name=section['name'],
+                            context=context,
+                            max_pages=section.get('max_pages', 5),
+                            previous_sections=previous_sections
+                        )
+                        
+                        section["content"] = section_result.content
+                        section["key_points"] = section_result.key_points
+                        section["ai_generated"] = True
+                        
+                        # Add summary to previous sections
+                        summary = f"{section['name']}: {', '.join(section_result.key_points[:3])}"
+                        previous_sections.append(summary)
+                        
+                        print(f"  ✓ AI generated {len(section_result.content.split())} words")
+                        
+                    except Exception as e:
+                        print(f"  ✗ AI generation failed: {e}")
+                        # Fallback to placeholder
+                        content = self._generate_placeholder_content(section, context)
+                        section["content"] = content
+                        section["ai_generated"] = False
                 else:
-                    content = f"[Content for {section['name']} - {section['max_pages']} pages]\n"
-                    content += f"Audience: {', '.join(section['audience_focus'])}\n"
-                    content += f"[Detailed content would be generated here based on context]"
+                    # Use placeholder content when AI is disabled
+                    content = self._generate_placeholder_content(section, context)
+                    section["content"] = content
+                    section["ai_generated"] = False
                 
-                section["content"] = content
                 section["status"] = "drafted"
                 section["draft_version"] = 1
                 section["last_modified"] = datetime.datetime.now().isoformat()
@@ -362,6 +472,26 @@ Key Requirements:
             return "revised"
         
         return "review_needed"
+    
+    def _generate_placeholder_content(self, section: Dict, context: Dict) -> str:
+        """Generate placeholder content when AI is not available."""
+        if section["name"] == "Executive Summary":
+            content = f"""This document establishes standards for {context['topic']}.
+                    
+Purpose: {context['purpose']}
+
+Key Requirements:
+- Authentication using OAuth 2.0 and JWT
+- Role-based authorization (RBAC)
+- Comprehensive input validation
+- Rate limiting for all endpoints
+"""
+        else:
+            content = f"[Content for {section['name']} - {section['max_pages']} pages]\n"
+            content += f"Audience: {', '.join(section['audience_focus'])}\n"
+            content += f"[Manual content required - AI disabled or unavailable]"
+        
+        return content
 
 
 class PeerReviewNode(ReviewNode):
@@ -411,6 +541,32 @@ class PeerReviewNode(ReviewNode):
             return "needs_revision"
         else:
             return "rejected"
+    
+    def _compile_document_content(self, document: Dict) -> str:
+        """Compile all document sections into a single string for review."""
+        content_parts = []
+        
+        # Add title and metadata
+        content_parts.append(f"Title: {document.get('title', 'Untitled')}")
+        content_parts.append(f"Version: {document.get('version', '0.1')}")
+        content_parts.append(f"Type: {document.get('type', 'Document')}")
+        content_parts.append("\n" + "="*60 + "\n")
+        
+        # Add all sections
+        for section in document.get("outline", []):
+            if section.get("status") == "drafted":
+                content_parts.append(f"\n## {section['name']}\n")
+                content_parts.append(section.get("content", "[No content]"))
+                
+                # Add key points if available
+                if section.get("key_points"):
+                    content_parts.append("\nKey Points:")
+                    for point in section["key_points"]:
+                        content_parts.append(f"  • {point}")
+                
+                content_parts.append("\n")
+        
+        return "\n".join(content_parts)
 
 
 class VersionControlNode(DocumentNode):

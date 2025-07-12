@@ -30,6 +30,10 @@ services:
       - PYTHONUNBUFFERED=1
       - WORKFLOW_ENV=docker
     
+    # Load environment from .env file
+    env_file:
+      - .env
+    
     # Override command for different workflows
     # command: python3 document_workflow.py
     # command: python3 test_document_workflow.py

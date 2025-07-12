@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  document-workflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pocketflow-document-workflow:latest
+    container_name: document_workflow
+    
+    # Interactive mode for CLI prompts
+    stdin_open: true
+    tty: true
+    
+    # Volume mounts for persistence
+    volumes:
+      # Mount output directories
+      - ./output:/app/output
+      - ./archive:/app/archive
+      - ./published:/app/published
+      
+      # Mount context file for easy editing
+      - ./context.yml:/app/context.yml
+      
+      # Optional: Mount custom workflows
+      - ./custom_workflows:/app/custom_workflows
+    
+    # Environment variables
+    environment:
+      - PYTHONUNBUFFERED=1
+      - WORKFLOW_ENV=docker
+    
+    # Override command for different workflows
+    # command: python3 document_workflow.py
+    # command: python3 test_document_workflow.py
+    # command: -c "python3 -u document_workflow.py"
+    
+    # Resource limits (optional)
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  # Development service with code mounting
+  document-workflow-dev:
+    extends: document-workflow
+    container_name: document_workflow_dev
+    volumes:
+      - .:/app
+    command: /bin/bash
+    profiles:
+      - dev
+
+# Volumes for data persistence
+volumes:
+  workflow-data:
+    driver: local

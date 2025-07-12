@@ -1,0 +1,10 @@
+# PocketFlow has no external dependencies by design
+# Only Python standard library is needed
+
+# Document workflow dependencies
+PyYAML==6.0.1
+
+# Optional: For enhanced features (uncomment if needed)
+# python-dotenv==1.0.0  # For environment configuration
+# rich==13.7.0          # For better CLI formatting
+# click==8.1.7          # For CLI argument parsing

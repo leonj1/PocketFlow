@@ -1,0 +1,248 @@
+# Document Context Definition
+# This file provides comprehensive context for document creation workflow
+
+# Core Information
+topic: "API Security Guidelines"
+document_type: "Technical Standard"
+version: "1.0"
+purpose: "Establish security standards and best practices for REST API development across the organization"
+
+# Target Audience
+audience:
+  primary:
+    - role: "Backend Developers"
+      experience_level: "Mid to Senior"
+      familiarity_with_topic: "Intermediate"
+    - role: "Security Engineers"
+      experience_level: "All levels"
+      familiarity_with_topic: "Advanced"
+  secondary:
+    - role: "DevOps Engineers"
+      experience_level: "Senior"
+    - role: "Technical Leads"
+      experience_level: "Senior"
+    - role: "QA Engineers"
+      experience_level: "Mid to Senior"
+
+# Document Scope
+scope:
+  includes:
+    - "Authentication mechanisms (OAuth 2.0, JWT, API Keys)"
+    - "Authorization patterns and RBAC implementation"
+    - "Input validation and sanitization techniques"
+    - "Rate limiting and throttling strategies"
+    - "Error handling and security logging"
+    - "CORS configuration guidelines"
+    - "API versioning security considerations"
+    - "Secure data transmission practices"
+  
+out_of_scope:
+  - "Network security configurations"
+  - "Database encryption methods"
+  - "Physical security measures"
+  - "Frontend security practices"
+  - "Infrastructure security (covered in separate guide)"
+  - "Compliance certifications (SOC2, ISO27001)"
+
+# Constraints and Requirements
+constraints:
+  technical:
+    - "Must align with OWASP API Security Top 10"
+    - "Compatible with existing OAuth 2.0 infrastructure"
+    - "Support for both REST and GraphQL patterns"
+    - "Must work with current API Gateway solution"
+  organizational:
+    - "Maximum 25 pages for main document"
+    - "Must be approved by Security Council"
+    - "Align with company coding standards"
+    - "Available in both English and technical diagram formats"
+  timeline:
+    draft_deadline: "2 weeks from start"
+    review_period: "1 week"
+    final_approval: "4 weeks from start"
+    implementation_deadline: "6 weeks from approval"
+
+# Prerequisites
+prerequisites:
+  reader_knowledge:
+    - "Basic understanding of REST API principles"
+    - "Familiarity with HTTP protocols and methods"
+    - "Understanding of client-server architecture"
+    - "Basic security concepts (authentication vs authorization)"
+  required_tools:
+    - "API testing tools (Postman, curl)"
+    - "Code review access"
+    - "Development environment setup"
+  related_documents:
+    - title: "Corporate Security Policy v2.1"
+      location: "internal-wiki/security/policy"
+      required: true
+    - title: "Development Standards Guide"
+      location: "internal-wiki/engineering/standards"
+      required: true
+    - title: "API Design Guidelines"
+      location: "internal-wiki/engineering/api-design"
+      required: false
+
+# Expected Deliverables
+deliverables:
+  - type: "Main Document"
+    format: "PDF"
+    sections:
+      - name: "Executive Summary"
+        max_pages: 2
+        audience_focus: ["Technical Leads", "Management"]
+      - name: "Core Security Principles"
+        max_pages: 3
+        audience_focus: ["All"]
+      - name: "Authentication Guidelines"
+        max_pages: 5
+        audience_focus: ["Backend Developers", "Security Engineers"]
+      - name: "Authorization Patterns"
+        max_pages: 5
+        audience_focus: ["Backend Developers", "Security Engineers"]
+      - name: "Implementation Examples"
+        max_pages: 6
+        audience_focus: ["Backend Developers"]
+      - name: "Security Checklist"
+        max_pages: 2
+        audience_focus: ["All"]
+      - name: "Appendices"
+        max_pages: 2
+        audience_focus: ["Security Engineers"]
+  
+  - type: "Quick Reference Card"
+    format: "PDF/PNG"
+    description: "One-page summary of critical security practices"
+    
+  - type: "Code Templates"
+    format: "GitHub Repository"
+    description: "Reusable code snippets for common security patterns"
+    
+  - type: "Training Materials"
+    format: "Slides + Workshop Guide"
+    description: "Materials for developer security training sessions"
+
+# Success Criteria
+success_criteria:
+  quantitative:
+    - metric: "Developer Compliance"
+      target: "90% within 3 months"
+      measurement: "Code review audits"
+    - metric: "Security Incidents"
+      target: "Zero critical API vulnerabilities"
+      measurement: "Security scan results"
+    - metric: "Adoption Rate"
+      target: "100% of new APIs following guidelines"
+      measurement: "Architecture review board tracking"
+  qualitative:
+    - "Positive feedback from security audit"
+    - "Reduced time to implement secure APIs"
+    - "Improved developer confidence in security practices"
+    - "Consistent security implementation across teams"
+
+# Stakeholders
+stakeholders:
+  sponsors:
+    - name: "CTO"
+      role: "Executive Sponsor"
+      involvement: "Final approval"
+  approvers:
+    - name: "Security Council"
+      approval_type: "unanimous"
+      members: ["CISO", "Principal Security Engineer", "Security Architect"]
+    - name: "Engineering Leadership"
+      approval_type: "majority"
+      members: ["VP Engineering", "Principal Engineers", "Tech Leads"]
+  reviewers:
+    - group: "Senior Developers"
+      min_reviewers: 3
+      focus_areas: ["Practicality", "Implementation feasibility"]
+    - group: "Security Team"
+      min_reviewers: 2
+      focus_areas: ["Security completeness", "Threat coverage"]
+    - group: "DevOps Team"
+      min_reviewers: 1
+      focus_areas: ["Deployment considerations", "Monitoring"]
+  contributors:
+    - "API Platform Team"
+    - "Security Engineering Team"
+    - "Developer Experience Team"
+
+# Key Terminology
+terminology:
+  - term: "API Key"
+    definition: "Unique identifier used for API authentication and tracking"
+    context: "Used for service-to-service authentication"
+  
+  - term: "JWT"
+    definition: "JSON Web Token - Self-contained token for information exchange"
+    context: "Preferred for user authentication in stateless APIs"
+  
+  - term: "Rate Limiting"
+    definition: "Controlling the number of requests a client can make in a time window"
+    context: "Prevents abuse and ensures fair resource usage"
+  
+  - term: "RBAC"
+    definition: "Role-Based Access Control - Authorization based on user roles"
+    context: "Standard pattern for API authorization"
+  
+  - term: "OAuth 2.0"
+    definition: "Industry-standard protocol for authorization"
+    context: "Used for third-party integrations and user consent flows"
+
+# References and Resources
+references:
+  standards:
+    - title: "OWASP API Security Top 10"
+      url: "https://owasp.org/www-project-api-security/"
+      priority: "required"
+    - title: "RFC 6749 - OAuth 2.0"
+      url: "https://tools.ietf.org/html/rfc6749"
+      priority: "required"
+    - title: "RFC 7519 - JSON Web Token"
+      url: "https://tools.ietf.org/html/rfc7519"
+      priority: "recommended"
+  internal:
+    - title: "Company Security Baseline"
+      location: "internal-wiki/security/baseline"
+    - title: "API Gateway Documentation"
+      location: "internal-wiki/infrastructure/api-gateway"
+  tools:
+    - title: "OWASP ZAP"
+      purpose: "API Security Testing"
+      url: "https://www.zaproxy.org/"
+
+# Review and Approval Process
+review_process:
+  stages:
+    - stage: "Working Group Review"
+      duration: "3 days"
+      participants: ["Contributors", "Selected Reviewers"]
+      exit_criteria: ["All major comments addressed", "No blocking issues"]
+    
+    - stage: "Stakeholder Review"
+      duration: "4 days"
+      participants: ["All Reviewers", "Approvers"]
+      exit_criteria: ["Consensus on approach", "Technical accuracy verified"]
+    
+    - stage: "Security Council Approval"
+      duration: "2 days"
+      participants: ["Security Council Members"]
+      exit_criteria: ["Unanimous approval", "Security requirements met"]
+    
+    - stage: "Final Leadership Approval"
+      duration: "2 days"
+      participants: ["Engineering Leadership"]
+      exit_criteria: ["Majority approval", "Resource commitment confirmed"]
+
+# Document Maintenance
+maintenance:
+  review_frequency: "Quarterly"
+  update_triggers:
+    - "Major security incident"
+    - "New regulatory requirements"
+    - "Significant technology changes"
+    - "OWASP Top 10 updates"
+  ownership: "Security Engineering Team"
+  archive_policy: "Keep last 3 versions accessible"

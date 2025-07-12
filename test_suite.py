@@ -91,7 +91,7 @@ class TestContextLoaderNode:
         shared = {}
         result = node.run(shared)
         
-        assert result == "continue"
+        assert result == None  # Fixed: should return None to continue
         assert "context" in shared
         assert shared["context"]["topic"] == "Test Document"
         assert "document" in shared
@@ -138,7 +138,7 @@ class TestWorkflowNodes:
         with patch.object(node, 'collect_feedback', return_value="No"):
             result = node.run(shared)
         
-        assert result == "continue"
+        assert result == None  # Fixed: should return None to continue
         assert "assessed_needs" in shared["document"]
         assert len(shared["document"]["assessed_needs"]) > 0
     
@@ -160,7 +160,7 @@ class TestWorkflowNodes:
         
         result = node.run(shared)
         
-        assert result == "continue"
+        assert result == None  # Fixed: should return None to continue
         assert "outline" in shared["document"]
         assert len(shared["document"]["outline"]) == 2
         assert shared["document"]["outline"][0]["name"] == "Introduction"
@@ -179,7 +179,7 @@ class TestWorkflowNodes:
         
         result = node.run(shared)
         
-        assert result == "continue"
+        assert result == None  # Fixed: should return None to continue
         assert "assignments" in shared
         assert len(shared["assignments"]["reviewers"]) == 2
         assert len(shared["assignments"]["approvers"]) == 1
@@ -210,7 +210,7 @@ class TestDocumentDraftingNode:
         
         result = node.run(shared)
         
-        assert result == "review_needed"
+        assert result == None  # Fixed: DocumentDraftingNode now returns None to continue
         assert shared["document"]["outline"][0]["status"] == "drafted"
         assert shared["document"]["outline"][0]["content"] != ""
         assert shared["document"]["outline"][0]["ai_generated"] == False

@@ -178,7 +178,7 @@ class ContextLoaderNode(DocumentNode):
                 }
             }
             self.add_audit_entry(shared, "context_loaded", f"Loaded context for: {shared['context']['topic']}")
-            return "continue"
+            return None  # Continue to next node
         else:
             return "error"
 
@@ -227,6 +227,11 @@ class NeedsAssessmentNode(ReviewNode):
                 
             except Exception as e:
                 print(f"\n⚠️  AI assessment failed: {e}")
+                print(f"     Error details: {type(e).__name__}: {str(e)}")
+                # Log more details about the AI configuration
+                if self.ai_agent:
+                    config = self.ai_agent.get_config()
+                    print(f"     AI Config: Model={config.get('model')}, Provider={config.get('provider')}, Enabled={config.get('enabled')}")
                 # Fallback to default needs
                 needs = [
                     "Clear examples for each security pattern",
@@ -252,7 +257,7 @@ class NeedsAssessmentNode(ReviewNode):
         self.update_document(shared, {"assessed_needs": needs})
         self.add_audit_entry(shared, "needs_assessed", f"Identified {len(needs)} needs")
         
-        return "continue"
+        return None  # Continue to next node
     
     def _format_audience(self, audience: Dict) -> str:
         """Format audience information for display."""
@@ -341,7 +346,7 @@ class OutlineTemplateNode(DocumentNode):
         self.update_document(shared, {"outline": outline})
         self.add_audit_entry(shared, "outline_generated", f"Created outline with {len(outline)} sections")
         
-        return "continue"
+        return None  # Continue to next node
 
 
 class RoleAssignmentNode(DocumentNode):
@@ -381,7 +386,7 @@ class RoleAssignmentNode(DocumentNode):
                            f"Assigned {len(assignments['reviewers'])} reviewers, "
                            f"{len(assignments['approvers'])} approvers")
         
-        return "continue"
+        return None  # Continue to next node
 
 
 # Working Group Flow Nodes
@@ -443,6 +448,11 @@ class DocumentDraftingNode(DocumentNode):
                         
                     except Exception as e:
                         print(f"  ✗ AI generation failed: {e}")
+                        print(f"     Error details: {type(e).__name__}: {str(e)}")
+                        # Log more details about the AI configuration
+                        if self.ai_agent:
+                            config = self.ai_agent.get_config()
+                            print(f"     AI Config: Model={config.get('model')}, Provider={config.get('provider')}, Enabled={config.get('enabled')}")
                         # Fallback to placeholder
                         content = self._generate_placeholder_content(section, context)
                         section["content"] = content
@@ -471,7 +481,7 @@ class DocumentDraftingNode(DocumentNode):
             shared["revision_needed"] = False
             return "revised"
         
-        return "review_needed"
+        return None  # Continue to peer review
     
     def _generate_placeholder_content(self, section: Dict, context: Dict) -> str:
         """Generate placeholder content when AI is not available."""
@@ -604,7 +614,7 @@ class VersionControlNode(DocumentNode):
         self.add_audit_entry(shared, "version_saved", 
                            f"Saved v{version_record['version']}, created v{document['version']}")
         
-        return "continue"
+        return None  # Continue to next node
 
 
 class WorkingGroupApprovalNode(ApprovalNode):
@@ -638,6 +648,7 @@ class WorkingGroupApprovalNode(ApprovalNode):
         
         if decision == "Approve for Committee":
             document["status"] = "approved_by_working_group"
+            shared["working_group_approved"] = True
             return "approved"
         elif decision == "Needs More Work":
             shared["revision_needed"] = True
@@ -681,7 +692,8 @@ class SubmissionNode(DocumentNode):
         self.add_audit_entry(shared, "submitted_to_committee", 
                            f"Submitted v{submission['version']} to {submission['target_committee']}")
         
-        return "submitted"
+        shared["committee_submitted"] = True
+        return None  # Continue to committee review
 
 
 class CommitteeReviewNode(ReviewNode):
@@ -873,7 +885,8 @@ class PublicationNode(DocumentNode):
         self.add_audit_entry(shared, "document_published", 
                            f"Published {len(published_items)} deliverables")
         
-        return "published"
+        shared["published"] = True
+        return None  # Continue to training
 
 
 class TrainingImplementationNode(DocumentNode):
@@ -915,7 +928,7 @@ class TrainingImplementationNode(DocumentNode):
         self.add_audit_entry(shared, "training_planned", 
                            f"Created plan for {len(training_plan['sessions'])} training sessions")
         
-        return "continue"
+        return None  # Continue to next node
 
 
 class MaintenanceReviewNode(DocumentNode):
@@ -950,7 +963,7 @@ class MaintenanceReviewNode(DocumentNode):
         self.add_audit_entry(shared, "maintenance_configured", 
                            f"Set up {maintenance_schedule['review_frequency']} review cycle")
         
-        return "continue"
+        return None  # Continue to next node
     
     def _calculate_next_review(self, frequency: str) -> str:
         """Calculate next review date based on frequency."""

@@ -62,7 +62,8 @@ published/
 audit_trail_*.json
 
 # Misc
-.env
+# Allow .env for local development (remove in production)
+# .env
 .env.local
 .env.development
 .env.production

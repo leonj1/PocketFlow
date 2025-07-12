@@ -47,6 +47,13 @@ class AiAgent:
         # Check if AI is enabled
         self.enabled = os.getenv('DOC_GENERATION_MODE', 'ai_assisted') == 'ai_assisted'
         
+        print(f"🤖 AI Agent Configuration:")
+        print(f"   Mode: {os.getenv('DOC_GENERATION_MODE', 'ai_assisted')}")
+        print(f"   Enabled: {self.enabled}")
+        print(f"   Provider: {self.provider}")
+        print(f"   Model: {self.model}")
+        print(f"   API Key Present: {'Yes' if self.api_token else 'No'}")
+        
         if self.enabled:
             # Validate configuration
             if not self.api_token:
@@ -56,6 +63,7 @@ class AiAgent:
             self._init_agent()
         else:
             logger.info("AI Agent disabled - running in human_only mode")
+            print("   Status: AI Agent disabled - running in human_only mode")
             self.agent = None
     
     def _init_agent(self):
@@ -77,11 +85,14 @@ class AiAgent:
                 )
                 
                 logger.info(f"Initialized {self.provider} AI agent with model {self.model}")
+                print(f"   Status: ✓ AI Agent initialized successfully")
             else:
                 raise ValueError(f"Unsupported provider: {self.provider}")
                 
         except Exception as e:
             logger.error(f"Failed to initialize AI agent: {e}")
+            print(f"   Status: ✗ Failed to initialize AI agent")
+            print(f"   Error: {type(e).__name__}: {str(e)}")
             raise
     
     async def invoke_async(self, query: str, context: Optional[Dict[str, Any]] = None) -> str:

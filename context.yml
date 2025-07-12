@@ -2,10 +2,10 @@
 # This file provides comprehensive context for document creation workflow
 
 # Core Information
-topic: "API Security Guidelines"
+topic: "ADR to prevent an Oauth JWT token from being reused between API services without prior user consent."
 document_type: "Technical Standard"
 version: "1.0"
-purpose: "Establish security standards and best practices for REST API development across the organization"
+purpose: "Provide the technical implementation how user consent will be required between unrelated services. This is to prevent any service from impersonating or reusing a valid JWT token that was issued onto that service from being used downstream onto any other service where the JWT can be used as that user without the user's consent."
 
 # Target Audience
 audience:
@@ -13,7 +13,10 @@ audience:
     - role: "Backend Developers"
       experience_level: "Mid to Senior"
       familiarity_with_topic: "Intermediate"
-    - role: "Security Engineers"
+    - role: "Application Security Engineers"
+      experience_level: "All levels"
+      familiarity_with_topic: "Advanced"
+    - role: "IAM Security Engineers"
       experience_level: "All levels"
       familiarity_with_topic: "Advanced"
   secondary:
@@ -23,18 +26,18 @@ audience:
       experience_level: "Senior"
     - role: "QA Engineers"
       experience_level: "Mid to Senior"
+    - role: "Product Managers"
+      experience_level: "Mid to Senior"
 
 # Document Scope
 scope:
   includes:
     - "Authentication mechanisms (OAuth 2.0, JWT, API Keys)"
     - "Authorization patterns and RBAC implementation"
+    - "JWT audience and scope claims"
     - "Input validation and sanitization techniques"
-    - "Rate limiting and throttling strategies"
     - "Error handling and security logging"
-    - "CORS configuration guidelines"
-    - "API versioning security considerations"
-    - "Secure data transmission practices"
+    - "User Experience when being prompted for consent"
   
 out_of_scope:
   - "Network security configurations"
@@ -48,12 +51,12 @@ out_of_scope:
 constraints:
   technical:
     - "Must align with OWASP API Security Top 10"
-    - "Compatible with existing OAuth 2.0 infrastructure"
+    - "Compatible with existing OAuth 2.0 infrastructure such as Okta and Duende Identity Server"
     - "Support for both REST and GraphQL patterns"
-    - "Must work with current API Gateway solution"
   organizational:
-    - "Maximum 25 pages for main document"
-    - "Must be approved by Security Council"
+    - "Must be easy to implement at scale since there are 1000s of services"
+    - "Must be easy to track adoption since there are 1000s of services"
+    - "Violations of not implementing user consent must be tracked"
     - "Align with company coding standards"
     - "Available in both English and technical diagram formats"
   timeline:
@@ -70,7 +73,7 @@ prerequisites:
     - "Understanding of client-server architecture"
     - "Basic security concepts (authentication vs authorization)"
   required_tools:
-    - "API testing tools (Postman, curl)"
+    - "API testing tools (curl)"
     - "Code review access"
     - "Development environment setup"
   related_documents:

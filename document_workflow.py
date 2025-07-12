@@ -210,6 +210,20 @@ class NeedsAssessmentNode(ReviewNode):
                          f"Scope: {len(context['scope']['includes'])} items included\n"
                          f"Timeline: {context['constraints']['timeline']}")
         
+        # Search for similar standards to inform needs assessment
+        search_results = []
+        if self.ai_agent:
+            try:
+                print("\n🔍 Searching for similar standards and best practices...")
+                search_results = self.ai_agent.search_similar_standards(context)
+                if search_results:
+                    print(f"  ✓ Found {len(search_results)} relevant standards")
+                    # Display top results
+                    for i, result in enumerate(search_results[:3]):
+                        print(f"    {i+1}. {result.title}")
+            except Exception as e:
+                print(f"  ⚠️  Search failed: {e}")
+        
         # AI-powered needs assessment if enabled
         if self.ai_enabled and self.ai_agent:
             try:
@@ -224,6 +238,12 @@ class NeedsAssessmentNode(ReviewNode):
                                  f"Recommended Approach: {ai_assessment.recommended_approach}")
                 
                 needs = ai_assessment.identified_needs
+                
+                # Add insights from search results if available
+                if search_results:
+                    self.format_output("Related Standards Found",
+                                     "\n".join(f"• {r.title}\n  {r.snippet}\n  URL: {r.url}" 
+                                              for r in search_results[:3]))
                 
             except Exception as e:
                 print(f"\n⚠️  AI assessment failed: {e}")
@@ -255,6 +275,9 @@ class NeedsAssessmentNode(ReviewNode):
             needs.append(additional)
         
         self.update_document(shared, {"assessed_needs": needs})
+        # Store search results in shared state for use by other nodes
+        if search_results:
+            shared["search_results_standards"] = [r.to_dict() for r in search_results]
         self.add_audit_entry(shared, "needs_assessed", f"Identified {len(needs)} needs")
         
         return None  # Continue to next node
@@ -290,6 +313,19 @@ class OutlineTemplateNode(DocumentNode):
         context = self.get_context(shared)
         document = self.get_document(shared)
         needs = document.get("assessed_needs", [])
+        
+        # Search for document templates
+        template_results = []
+        if self.ai_agent:
+            try:
+                print("\n🔍 Searching for document structure templates...")
+                template_results = self.ai_agent.search_document_templates(context)
+                if template_results:
+                    print(f"  ✓ Found {len(template_results)} document templates")
+                    for i, template in enumerate(template_results[:3]):
+                        print(f"    {i+1}. {template.title}")
+            except Exception as e:
+                print(f"  ⚠️  Template search failed: {e}")
         
         # Try AI-powered outline generation
         if self.ai_enabled and self.ai_agent:
@@ -344,6 +380,9 @@ class OutlineTemplateNode(DocumentNode):
                                    for i, s in enumerate(outline)]))
         
         self.update_document(shared, {"outline": outline})
+        # Store template search results in shared state
+        if template_results:
+            shared["search_results_templates"] = [t.to_dict() for t in template_results]
         self.add_audit_entry(shared, "outline_generated", f"Created outline with {len(outline)} sections")
         
         return None  # Continue to next node
@@ -426,6 +465,19 @@ class DocumentDraftingNode(DocumentNode):
                 if self.ai_enabled and self.ai_agent:
                     # Use AI to generate content
                     try:
+                        # Search for references specific to this section
+                        section_references = []
+                        if self.ai_agent:
+                            try:
+                                print("  🔍 Searching for section references...")
+                                section_references = self.ai_agent.search_references(section['name'], context)
+                                if section_references:
+                                    print(f"    ✓ Found {len(section_references)} references")
+                                    for j, ref in enumerate(section_references[:2]):
+                                        print(f"      {j+1}. {ref.title}")
+                            except Exception as e:
+                                print(f"    ⚠️  Reference search failed: {e}")
+                        
                         print("  Using AI to generate content...")
                         
                         # Generate section with AI
@@ -439,6 +491,10 @@ class DocumentDraftingNode(DocumentNode):
                         section["content"] = section_result.content
                         section["key_points"] = section_result.key_points
                         section["ai_generated"] = True
+                        
+                        # Store references found for this section
+                        if section_references:
+                            section["references"] = [ref.to_dict() for ref in section_references[:3]]
                         
                         # Add summary to previous sections
                         summary = f"{section['name']}: {', '.join(section_result.key_points[:3])}"

@@ -25,8 +25,11 @@ COPY pocketflow/ ./pocketflow/
 COPY document_workflow.py .
 COPY ai_agent.py .
 COPY document_ai_agents.py .
+COPY web_search_service.py .
 COPY context.yml .
 COPY test_document_workflow.py .
+COPY test_web_search_service.py .
+COPY test_search_integration.py .
 COPY README_document_workflow.md .
 
 # Copy .env file if it exists (for development)

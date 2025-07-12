@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 *.so
 .Python
+!web_search_service.py
 env/
 venv/
 ENV/
@@ -54,6 +55,8 @@ test_*.py
 !test_document_workflow.py
 !test_ai_integration.py
 !test_suite.py
+!test_web_search_service.py
+!test_search_integration.py
 
 # Output directories (will be created in container)
 output/

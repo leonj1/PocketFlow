@@ -7,6 +7,7 @@ from typing import List, Dict, Optional, Any
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 from ai_agent import AiAgent
+from web_search_service import WebSearchService, SearchResult, get_search_service
 import logging
 import json
 
@@ -49,6 +50,167 @@ class DocumentOutline(BaseModel):
 
 class DocumentAiAgent(AiAgent):
     """Specialized AI agent for document operations."""
+    
+    def __init__(self, *args, **kwargs):
+        """Initialize the document AI agent with optional search service."""
+        super().__init__(*args, **kwargs)
+        self.search_service = None
+        self._init_search_service()
+    
+    def _init_search_service(self):
+        """Initialize the web search service if enabled."""
+        try:
+            self.search_service = get_search_service()
+            if self.search_service.is_enabled():
+                logger.info("Web search service enabled for DocumentAiAgent")
+            else:
+                logger.info("Web search service disabled")
+        except Exception as e:
+            logger.error(f"Failed to initialize search service: {e}")
+            self.search_service = None
+    
+    def search_similar_standards(self, context: Dict) -> List[SearchResult]:
+        """
+        Search for similar standards and best practices related to the document topic.
+        
+        Args:
+            context: Document context from YAML
+            
+        Returns:
+            List of relevant search results
+        """
+        if not self.search_service or not self.search_service.is_enabled():
+            logger.debug("Search service not available for similar standards search")
+            return []
+        
+        try:
+            topic = context.get('topic', '')
+            scope_includes = context.get('scope', {}).get('includes', [])
+            
+            results = self.search_service.search_similar_standards(topic, scope_includes)
+            logger.info(f"Found {len(results)} similar standards for topic: {topic}")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Error searching for similar standards: {e}")
+            return []
+    
+    def search_references(self, section_name: str, context: Dict) -> List[SearchResult]:
+        """
+        Search for references and examples for a specific document section.
+        
+        Args:
+            section_name: Name of the section being drafted
+            context: Document context from YAML
+            
+        Returns:
+            List of relevant references
+        """
+        if not self.search_service or not self.search_service.is_enabled():
+            logger.debug("Search service not available for references search")
+            return []
+        
+        try:
+            # Build context string from document context
+            context_parts = [
+                context.get('topic', ''),
+                context.get('document_type', ''),
+                ' '.join(context.get('scope', {}).get('includes', [])[:3])
+            ]
+            context_str = ' '.join(filter(None, context_parts))
+            
+            results = self.search_service.search_references(section_name, context_str)
+            logger.info(f"Found {len(results)} references for section: {section_name}")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Error searching for references: {e}")
+            return []
+    
+    def search_document_templates(self, context: Dict) -> List[SearchResult]:
+        """
+        Search for document structure templates based on document type.
+        
+        Args:
+            context: Document context from YAML
+            
+        Returns:
+            List of relevant document templates
+        """
+        if not self.search_service or not self.search_service.is_enabled():
+            logger.debug("Search service not available for template search")
+            return []
+        
+        try:
+            document_type = context.get('document_type', 'Technical Standard')
+            # Extract industry/domain from audience or scope
+            audience = context.get('audience', {})
+            industry = None
+            
+            # Try to infer industry from audience roles
+            if 'primary' in audience:
+                for member in audience['primary']:
+                    if isinstance(member, dict) and 'role' in member:
+                        if 'Security' in member['role']:
+                            industry = 'security'
+                            break
+                        elif 'Developer' in member['role']:
+                            industry = 'software engineering'
+                            break
+            
+            results = self.search_service.search_document_templates(document_type, industry)
+            logger.info(f"Found {len(results)} document templates for type: {document_type}")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Error searching for document templates: {e}")
+            return []
+    
+    def verify_references(self, references: List[str]) -> Dict[str, bool]:
+        """
+        Verify that external references exist and are accessible.
+        
+        Args:
+            references: List of reference URLs or standard names
+            
+        Returns:
+            Dictionary mapping references to verification status
+        """
+        if not self.search_service or not self.search_service.is_enabled():
+            logger.debug("Search service not available for reference verification")
+            return {ref: False for ref in references}
+        
+        try:
+            results = self.search_service.verify_references(references)
+            verified_count = sum(1 for v in results.values() if v)
+            logger.info(f"Verified {verified_count}/{len(references)} references")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Error verifying references: {e}")
+            return {ref: False for ref in references}
+    
+    def format_search_results_for_prompt(self, results: List[SearchResult], max_results: int = 3) -> str:
+        """
+        Format search results for inclusion in AI prompts.
+        
+        Args:
+            results: List of search results
+            max_results: Maximum number of results to include
+            
+        Returns:
+            Formatted string for prompt inclusion
+        """
+        if not results:
+            return "No relevant search results found."
+        
+        formatted_parts = ["Relevant search results:"]
+        for i, result in enumerate(results[:max_results]):
+            formatted_parts.append(f"\n{i+1}. {result.title}")
+            formatted_parts.append(f"   {result.snippet}")
+            formatted_parts.append(f"   URL: {result.url}")
+        
+        return "\n".join(formatted_parts)
     
     def generate_section(self, 
                         section_name: str, 

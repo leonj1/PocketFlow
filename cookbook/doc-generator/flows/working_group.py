@@ -48,117 +48,62 @@ class DocumentDraftingNode(Node):
             print("\n Document Drafting Node Skipped - No response generated")
         return None
 
-class ThingsToRemoveNode(Node):
+class FeedbackNode(Node):
+    """Base class for feedback nodes that modify documents based on feedback."""
+    
+    def __init__(self, feedback_type, action_verb):
+        self.feedback_type = feedback_type
+        self.action_verb = action_verb
+        self.node_name = f"Things To {feedback_type.title()} Node"
+        super().__init__()
+    
     def prep(self, shared):
-        print("\n Things To Remove Node")
-        # If there are things to remove from the shared variable, add it to a variable. 
-        if shared["feedback"]["things_to_remove"] == "":
+        print(f"\n {self.node_name}")
+        if shared["feedback"][f"things_to_{self.feedback_type}"] == "":
             return None
 
         return {
             "document": shared["document"], 
-            "things_to_remove": shared["feedback"]["things_to_remove"]
+            f"things_to_{self.feedback_type}": shared["feedback"][f"things_to_{self.feedback_type}"]
         }
 
     def exec(self, context):
         if context is None:
             return None
         
-        # Call LLM with the entire conversation history
         prompt = f"""
-            Clean up the document by removing the following:
+            Clean up the document by {self.action_verb} the following:
             <document>{context["document"]}</document>
-            <things_to_remove>{context["things_to_remove"]}</things_to_remove>
+            <things_to_{self.feedback_type}>{context[f"things_to_{self.feedback_type}"]}</things_to_{self.feedback_type}>
         """
         messages = [{"role": "user", "content": prompt}]
         response = call_llm_thinking(messages)
         return response
 
     def post(self, shared, prep_res, exec_res):
-        # count the number of words in exec_res
         if exec_res is not None:
             word_count = len(exec_res.split())
-            print(f"\n Things to Remove Node Completed. Word Count: {word_count}")
+            print(f"\n {self.node_name} Completed. Word Count: {word_count}")
             shared["document"] = exec_res
         else:
-            print("\n Things to Remove Node Skipped - Nothing to remove")
-        return None
-
-class ThingsToAddNode(Node):
-    def prep(self, shared):
-        print("\n Things To Add Node")
-        # If there are things to remove from the shared variable, add it to a variable. 
-        if shared["feedback"]["things_to_add"] == "":
-            return None
-
-        return {
-            "document": shared["document"], 
-            "things_to_add": shared["feedback"]["things_to_add"]
-        }
-
-    def exec(self, context):
-        if context is None:
-            return None
+            print(f"\n {self.node_name} Skipped - Nothing to {self.feedback_type}")
         
-        # Call LLM with the entire conversation history
-        prompt = f"""
-            Clean up the document by adding the following:
-            <document>{context["document"]}</document>
-            <things_to_add>{context["things_to_add"]}</things_to_add>
-        """
-        messages = [{"role": "user", "content": prompt}]
-        response = call_llm_thinking(messages)
-        return response
-
-    def post(self, shared, prep_res, exec_res):
-        # count the number of words in exec_res
-        if exec_res is not None:
-            word_count = len(exec_res.split())
-            print(f"\n Things to Add Node Completed. Word Count: {word_count}")
-            shared["document"] = exec_res
-        else:
-            print("\n Things to Add Node Skipped - Nothing to add")
-        # clear things to add
-        shared["feedback"]["things_to_add"] = ""
+        if self.feedback_type in ["add", "change"]:
+            shared["feedback"][f"things_to_{self.feedback_type}"] = ""
         return None
 
-class ThingsToChangeNode(Node):
-    def prep(self, shared):
-        print("\n Things To Change Node")
-        # If there are things to change from the shared variable, add it to a variable. 
-        if shared["feedback"]["things_to_change"] == "":
-            return None
 
-        return {
-            "document": shared["document"], 
-            "things_to_change": shared["feedback"]["things_to_change"]
-        }
+class ThingsToRemoveNode(FeedbackNode):
+    def __init__(self):
+        super().__init__("remove", "removing")
 
-    def exec(self, context):
-        if context is None:
-            return None
-        
-        # Call LLM with the entire conversation history
-        prompt = f"""
-            Clean up the document by changing the following:
-            <document>{context["document"]}</document>
-            <things_to_change>{context["things_to_change"]}</things_to_change>
-        """
-        messages = [{"role": "user", "content": prompt}]
-        response = call_llm_thinking(messages)
-        return response
+class ThingsToAddNode(FeedbackNode):
+    def __init__(self):
+        super().__init__("add", "adding")
 
-    def post(self, shared, prep_res, exec_res):
-        # count the number of words in exec_res
-        if exec_res is not None:
-            word_count = len(exec_res.split())
-            print(f"\n Things to Change Node Completed. Word Count: {word_count}")
-            shared["document"] = exec_res
-        else:
-            print("\n Things to Change Node Skipped - Nothing to change")
-        # clear things to change
-        shared["feedback"]["things_to_change"] = ""
-        return None
+class ThingsToChangeNode(FeedbackNode):
+    def __init__(self):
+        super().__init__("change", "changing")
 
 class GroupEvaluatorNode(Node):
     def prep(self, shared):

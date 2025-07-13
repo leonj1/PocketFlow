@@ -77,8 +77,7 @@ class FeedbackNode(Node):
             <things_to_{self.feedback_type}>{context[f"things_to_{self.feedback_type}"]}</things_to_{self.feedback_type}>
         """
         messages = [{"role": "user", "content": prompt}]
-        response = call_llm_thinking(messages)
-        return response
+        return call_llm_thinking(messages)
 
     def post(self, shared, prep_res, exec_res):
         if exec_res is not None:

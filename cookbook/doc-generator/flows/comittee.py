@@ -52,7 +52,17 @@ class AsyncReviewNode(AsyncNode):
             shared["feedback"]["things_to_remove"].append(exec_res.get("things_to_remove", ""))
             shared["feedback"]["things_to_add"].append(exec_res.get("things_to_add", ""))
             shared["feedback"]["things_to_change"].append(exec_res.get("things_to_change", ""))
-            return exec_res.get("approval", "abstain")
+            outcome = exec_res.get("approval", "abstain")
+            # Add visual indicators for different outcomes
+            if outcome == "in_favor":
+                icon = "✅"
+            elif outcome == "against":
+                icon = "❌"
+            else:  # abstain
+                icon = "⚪"
+            print(f"Committee {self.review_name} outcome: {icon} {outcome}")
+            return outcome
+        print(f"Committee {self.review_name} outcome: ⚪ abstain")
         return "abstain"
 
 class AsyncAppSecurityReview(AsyncReviewNode):

@@ -26,7 +26,7 @@ def main():
     shared = {
         "input_file": "data/sales.csv"
     }
-    
+
     # Create and run flow
     print(f"Processing sales.csv in chunks...")
     flow = create_flow()

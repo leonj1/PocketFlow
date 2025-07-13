@@ -41,8 +41,25 @@ class AiAgent:
         self.api_token = api_token or os.getenv('GEMINI_API_KEY')
         self.provider = provider or os.getenv('LLM_PROVIDER', 'google')
         self.model = model or os.getenv('LLM_MODEL', 'gemini-2.0-flash-exp')
-        self.temperature = temperature or float(os.getenv('LLM_TEMPERATURE', '0.7'))
-        self.max_tokens = max_tokens or int(os.getenv('LLM_MAX_TOKENS', '2048'))
+        
+        # Handle numeric parameters with error handling
+        if temperature is not None:
+            self.temperature = temperature
+        else:
+            try:
+                self.temperature = float(os.getenv('LLM_TEMPERATURE', '0.7'))
+            except ValueError:
+                self.temperature = 0.7
+                logger.warning(f"Invalid LLM_TEMPERATURE value, using default: 0.7")
+        
+        if max_tokens is not None:
+            self.max_tokens = max_tokens
+        else:
+            try:
+                self.max_tokens = int(os.getenv('LLM_MAX_TOKENS', '2048'))
+            except ValueError:
+                self.max_tokens = 2048
+                logger.warning(f"Invalid LLM_MAX_TOKENS value, using default: 2048")
         
         # Check if AI is enabled
         self.enabled = os.getenv('DOC_GENERATION_MODE', 'ai_assisted') == 'ai_assisted'
@@ -136,19 +153,24 @@ class AiAgent:
         Returns:
             Response from the LLM as a string
         """
-        # For sync usage, we'll use asyncio.run
         try:
+            # Try to get the current event loop
             loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If we're already in an async context, create a task
-                task = asyncio.create_task(self.invoke_async(query, context))
-                return asyncio.run_until_complete(task)
-            else:
-                # Otherwise, use asyncio.run
-                return asyncio.run(self.invoke_async(query, context))
+            if loop.is_closed():
+                # If it's closed, create a new one
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
         except RuntimeError:
-            # Fallback for when no event loop exists
-            return asyncio.run(self.invoke_async(query, context))
+            # No event loop exists, create a new one
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        try:
+            # Run the async method in the event loop
+            return loop.run_until_complete(self.invoke_async(query, context))
+        except Exception as e:
+            logger.error(f"Error in invoke: {e}")
+            return f"AI Error: {str(e)}. Please provide manual input."
     
     def is_enabled(self) -> bool:
         """Check if the AI agent is enabled."""

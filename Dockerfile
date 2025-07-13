@@ -30,6 +30,7 @@ COPY context.yml .
 COPY test_document_workflow.py .
 COPY test_web_search_service.py .
 COPY test_search_integration.py .
+COPY test_ai_agent.py .
 COPY README_document_workflow.md .
 
 # Copy .env file if it exists (for development)

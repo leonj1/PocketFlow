@@ -57,6 +57,7 @@ test_*.py
 !test_suite.py
 !test_web_search_service.py
 !test_search_integration.py
+!test_ai_agent.py
 
 # Output directories (will be created in container)
 output/

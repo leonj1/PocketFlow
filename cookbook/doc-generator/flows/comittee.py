@@ -1,4 +1,6 @@
 import asyncio
+import yaml
+import re
 from pocketflow import Node, Flow, AsyncNode, AsyncFlow
 from utils import call_llm, call_llm_thinking
 
@@ -16,6 +18,39 @@ class AsyncReviewNode(AsyncNode):
         if "document" not in shared:
             return None
         return shared["document"]
+
+    def parse_yaml_response(self, response_text):
+        """Extract and parse YAML from the LLM response."""
+        try:
+            # Try to find YAML between ```yaml and ``` markers
+            yaml_match = re.search(r'```yaml\s*(.*?)\s*```', response_text, re.DOTALL)
+            if yaml_match:
+                yaml_text = yaml_match.group(1)
+            else:
+                # If no markers, try to parse the whole response as YAML
+                yaml_text = response_text
+            
+            # Parse the YAML
+            parsed = yaml.safe_load(yaml_text)
+            
+            # Ensure all required fields exist with defaults
+            result = {
+                "approval": parsed.get("approval", "abstain"),
+                "things_to_remove": parsed.get("things_to_remove", ""),
+                "things_to_add": parsed.get("things_to_add", ""),
+                "things_to_change": parsed.get("things_to_change", "")
+            }
+            
+            return result
+        except Exception as e:
+            print(f"Error parsing YAML response: {e}")
+            # Return default values if parsing fails
+            return {
+                "approval": "abstain",
+                "things_to_remove": "",
+                "things_to_add": "",
+                "things_to_change": ""
+            }
 
     async def exec_async(self, document):
         if document is None:
@@ -44,7 +79,11 @@ class AsyncReviewNode(AsyncNode):
         """
         messages = [{"role": "user", "content": prompt}]
         response = call_llm_thinking(messages)
-        return response
+        print(f"\n {self.review_name} Completed! Response: {response}")
+        
+        # Parse the YAML response
+        parsed_response = self.parse_yaml_response(response)
+        return parsed_response
 
     async def post_async(self, shared, prep_res, exec_res):
         print(f"\n {self.review_name} Completed!")
@@ -127,7 +166,8 @@ product_manager_flow = AsyncFlow(start=product_manager_review)
 class AsyncCommitteeFlow(AsyncFlow):
     async def run_async(self, shared):
         print("\n Committee Review Starting...")
-        await asyncio.gather(
+        # Run all reviews in parallel and collect outcomes
+        outcomes = await asyncio.gather(
             app_security_flow.run_async(shared),
             cloud_flow.run_async(shared),
             network_engineering_flow.run_async(shared),
@@ -135,8 +175,29 @@ class AsyncCommitteeFlow(AsyncFlow):
             chief_technology_officer_flow.run_async(shared),
             product_manager_flow.run_async(shared)
         )
+        
+        # Count the votes
+        in_favor_count = outcomes.count("in_favor")
+        against_count = outcomes.count("against")
+        abstain_count = outcomes.count("abstain")
+        
+        # Update shared approval counts
+        shared["approvals"]["in_favor"] = in_favor_count
+        shared["approvals"]["against"] = against_count
+        shared["approvals"]["abstain"] = abstain_count
+        
         print("\n Committee Review Completed!")
-        return "approved_by_committee"
+        print(f"Votes - In Favor: {in_favor_count}, Against: {against_count}, Abstain: {abstain_count}")
+        
+        # Evaluate committee decision
+        if against_count > 0:
+            return "rejected_by_committee"
+        elif in_favor_count == 0:  # All abstained or no votes in favor
+            return "rejected_by_committee"
+        elif in_favor_count > abstain_count:
+            return "approved_by_committee"
+        else:
+            return "rejected_by_committee"
 
 # Create a synchronous wrapper node for the async committee flow
 class CommitteeNode(Node):

@@ -85,7 +85,7 @@ prerequisites:
 # Expected Deliverables
 deliverables:
   - type: "Main Document"
-    format: "PDF"
+    format: "Markdown"
     sections:
       - name: "Executive Summary"
         max_pages: 2

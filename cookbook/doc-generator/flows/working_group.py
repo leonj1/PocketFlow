@@ -2,6 +2,7 @@ from pocketflow import Node, Flow
 import sys
 sys.path.append('/app/cookbook/doc-generator')
 from utils import call_llm, call_llm_thinking
+import yaml
 
 class GroupLeadNode(Node):
     """ Group Lead Node purpose is to determine whether to abandon iterating over the document. """
@@ -26,12 +27,16 @@ class DocumentDraftingNode(Node):
     def exec(self, context):
         if context is None:
             return None
-        
+
+        # context is already a parsed dictionary
+        document_structure = context["deliverables"][0]["sections"]
+
         # Call LLM with the entire conversation history
         writing_style = "Write the documents adhering to the writing style of Elements of Style."
         prompt = f"""
             Draft a document based on the following context:
             <context>{context}</context>
+            <document_structure>{document_structure}</document_structure>
             <style>{writing_style}</style>
         """
         messages = [{"role": "user", "content": prompt}]
@@ -59,22 +64,36 @@ class FeedbackNode(Node):
     
     def prep(self, shared):
         print(f"\n {self.node_name}")
-        if shared["feedback"][f"things_to_{self.feedback_type}"] == "":
+        feedback_list = shared["feedback"][f"things_to_{self.feedback_type}"]
+        # Check if the feedback list is empty or contains only empty strings
+        if not feedback_list or all(item == "" for item in feedback_list):
             return None
 
+        # Join all non-empty feedback items
+        feedback_text = "\n".join([item for item in feedback_list if item])
+
+        # context is already a parsed dictionary from shared
+        context_dict = shared["context"]
+        document_structure = context_dict["deliverables"][0]["sections"]
+        
         return {
             "document": shared["document"], 
-            f"things_to_{self.feedback_type}": shared["feedback"][f"things_to_{self.feedback_type}"]
+            f"things_to_{self.feedback_type}": feedback_text,
+            "document_structure": document_structure
         }
 
     def exec(self, context):
         if context is None:
             return None
         
+        writing_style = "Write the documents adhering to the writing style of Elements of Style."
         prompt = f"""
+            Ensure the document adheres to the following structure:
+            <document_structure>{context["document_structure"]}</document_structure>
             Clean up the document by {self.action_verb} the following:
             <document>{context["document"]}</document>
             <things_to_{self.feedback_type}>{context[f"things_to_{self.feedback_type}"]}</things_to_{self.feedback_type}>
+            <style>{writing_style}</style>
         """
         messages = [{"role": "user", "content": prompt}]
         return call_llm_thinking(messages)
@@ -87,8 +106,8 @@ class FeedbackNode(Node):
         else:
             print(f"\n {self.node_name} Skipped - Nothing to {self.feedback_type}")
         
-        if self.feedback_type in ["add", "change"]:
-            shared["feedback"][f"things_to_{self.feedback_type}"] = ""
+        # Clear the feedback list after processing
+        shared["feedback"][f"things_to_{self.feedback_type}"] = []
         return None
 
 

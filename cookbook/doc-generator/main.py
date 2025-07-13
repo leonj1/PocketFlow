@@ -1,4 +1,5 @@
 # from flows import flow
+import yaml
 from pocketflow import Node, Flow
 from flows.working_group import working_group_flow
 from flows.comittee import app_security_flow, cloud_flow, network_engineering_flow, software_architect_flow, chief_technology_officer_flow, product_manager_flow, committee_flow
@@ -16,9 +17,44 @@ class AbandonNode(Node):
         pass
 
 class PublisherNode(Node):
+    def prep(self, shared):
+        print("\n Publisher Node")
+        return {
+            "document": shared["document"],
+            "output_filename": shared["context"]["output_filename"]
+        }
+
+    def exec(self, prep_res):
+        # save the document to a file
+        with open(prep_res["output_filename"], "w") as f:
+            f.write(prep_res["document"])
+
+        return None
+
     def post(self, shared, prep_res, exec_res):
-        print("\nWriting the document")
-        pass
+        print(f"\n Publisher Node Completed. Result: {exec_res}")
+        return None
+
+class ComitteeEvaluatorNode(Node):
+    def prep(self, shared):
+        print("\n Comittee Evaluation Node")
+        return shared["approvals"]
+
+    def exec(self, approvals):
+        # if approval against is greater than 0 then reject
+        if approvals["against"] > 0:
+            return "rejected_by_committee"
+        if approvals["in_favor"] == 0:
+            return "rejected_by_committee"
+        # if in favor count is greater than abstain
+        if approvals["in_favor"] > approvals["abstain"]:
+            return "approved_by_committee"
+
+        return "rejected_by_committee"
+
+    def post(self, shared, prep_res, exec_res):
+        print(f"\n Comittee Evaluation Node Completed. Result: {exec_res}")
+        return exec_res
 
 def main():
     print("\nWelcome to Document Generator!")
@@ -26,7 +62,7 @@ def main():
     
     # Initialize shared store
     with open("/app/cookbook/doc-generator/context.yml", "r") as f:
-        context = f.read()
+        context = yaml.safe_load(f)
     shared = {
         "context": context,
         "next_step": "start",
@@ -36,9 +72,9 @@ def main():
             "max": 3
         },
         "feedback": {
-            "things_to_remove": "",
-            "things_to_add": "",
-            "things_to_change": ""
+            "things_to_remove": [],
+            "things_to_add": [],
+            "things_to_change": []
         },
         "approvals": {
             "in_favor": 0,

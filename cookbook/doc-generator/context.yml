@@ -6,6 +6,7 @@ topic: "ADR to prevent an Oauth JWT token from being reused between API services
 document_type: "Technical Standard"
 version: "1.0"
 purpose: "Provide the technical implementation how user consent will be required between unrelated services. This is to prevent any service from impersonating or reusing a valid JWT token that was issued onto that service from being used downstream onto any other service where the JWT can be used as that user without the user's consent."
+output_filename: "adr-001.md"
 
 # Target Audience
 audience:

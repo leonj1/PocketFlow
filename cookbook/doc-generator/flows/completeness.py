@@ -252,6 +252,9 @@ class DocumentCompletenessNode(Node):
                 if "attempts" in shared:
                     shared["attempts"]["current"] += 1
                 return "needs_improvement"
+            else:
+                print(f"\n  Document meets completeness threshold - generating report")
+                return "generate_report"
             
         return None
 
@@ -443,6 +446,5 @@ document_completeness_node = DocumentCompletenessNode()
 section_completeness_node = SectionCompletenessNode()
 completeness_report_node = CompletenessReportNode()
 
-# Create completeness flow
-document_completeness_node >> completeness_report_node
-completeness_flow = Flow(start=document_completeness_node)
+# Note: Connections are defined in main.py to ensure proper routing
+# based on completeness scores. Do not create default connections here.

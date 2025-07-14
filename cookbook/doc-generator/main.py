@@ -343,8 +343,9 @@ def build_section_workflow():
     document_assembler >> document_completeness_node
     
     # Document completeness analysis routes based on score
-    document_completeness_node >> completeness_report_node  # Default path (score >= 70)
-    document_completeness_node - "needs_improvement" >> section_revision_node  # Low score path
+    # IMPORTANT: No default path - must explicitly route based on score
+    document_completeness_node - "generate_report" >> completeness_report_node  # High score path (>= 70)
+    document_completeness_node - "needs_improvement" >> section_revision_node  # Low score path (< 70)
     
     # After report generation, proceed to committee
     completeness_report_node >> section_committee_node

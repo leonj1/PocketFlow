@@ -86,27 +86,47 @@ prerequisites:
 deliverables:
   - type: "Main Document"
     format: "Markdown"
+    writing_style: "Elements of Style where every sentence is clear and concise"
     sections:
       - name: "Executive Summary"
-        max_pages: 2
+        min_words: 100
+        max_words: 250
         audience_focus: ["Technical Leads", "Management"]
-      - name: "Core Security Principles"
-        max_pages: 3
+      - name: "Problem Statement"
+        min_words: 250
+        max_words: 500
         audience_focus: ["All"]
-      - name: "Authentication Guidelines"
-        max_pages: 5
+      - name: "Considered Solutions"
+        min_words: 500
+        max_words: 1500
         audience_focus: ["Backend Developers", "Security Engineers"]
-      - name: "Authorization Patterns"
-        max_pages: 5
+      - name: "Chosen Solution"
+        min_words: 500
+        max_words: 1500
         audience_focus: ["Backend Developers", "Security Engineers"]
-      - name: "Implementation Examples"
-        max_pages: 6
+      - name: "Rationale for Chosen Solution"
+        min_words: 500
+        max_words: 1500
+        audience_focus: ["Backend Developers", "Security Engineers"]
+      - name: "Steps for Tracking Adoption and Adherance"
+        min_words: 500
+        max_words: 1500
         audience_focus: ["Backend Developers"]
-      - name: "Security Checklist"
-        max_pages: 2
+      - name: "Mermaid Diagram Example"
+        min_words: 500
+        max_words: 1500
+        audience_focus: ["Backend Developers"]
+      - name: "Python Code Example"
+        min_words: 500
+        max_words: 1500
+        audience_focus: ["Backend Developers"]
+      - name: "Risks and Mitigations"
+        min_words: 500
+        max_words: 1500
         audience_focus: ["All"]
       - name: "Appendices"
-        max_pages: 2
+        min_words: 500
+        max_words: 750
         audience_focus: ["Security Engineers"]
   
   - type: "Quick Reference Card"

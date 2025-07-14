@@ -65,12 +65,25 @@ class FeedbackNode(Node):
     def prep(self, shared):
         print(f"\n {self.node_name}")
         feedback_list = shared["feedback"][f"things_to_{self.feedback_type}"]
-        # Check if the feedback list is empty or contains only empty strings
-        if not feedback_list or all(item == "" for item in feedback_list):
+        # Check if the feedback list is empty
+        if not feedback_list:
             return None
 
+        # Flatten and filter feedback items, ensuring they are strings
+        flattened_feedback = []
+        for item in feedback_list:
+            if isinstance(item, list):
+                # If item is a list, flatten it
+                flattened_feedback.extend([str(sub_item) for sub_item in item if sub_item])
+            elif item:  # Non-empty string or other truthy value
+                flattened_feedback.append(str(item))
+        
+        # Check if we have any valid feedback after flattening
+        if not flattened_feedback:
+            return None
+            
         # Join all non-empty feedback items
-        feedback_text = "\n".join([item for item in feedback_list if item])
+        feedback_text = "\n".join(flattened_feedback)
 
         # context is already a parsed dictionary from shared
         context_dict = shared["context"]

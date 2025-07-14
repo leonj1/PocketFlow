@@ -66,7 +66,10 @@ def main():
     shared = {
         "context": context,
         "next_step": "start",
-        "document": "",
+        "document": {
+            "title": "",
+            "sections": []
+        },
         "attempts": {
             "current": 0,
             "max": 3

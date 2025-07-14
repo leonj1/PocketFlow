@@ -63,20 +63,24 @@ class AsyncReviewNode(AsyncNode):
             <document>{document}</document>
             **YAML Output Requirements:**
             - Extract `approval` (`in_favor`, `against`, or `abstain`).
-            - Extract `things_to_remove` (What is mandatory that should be removed from the document).
-            - Extract `things_to_add` (What is mandatory that should be added to the document).
-            - Extract `things_to_change` (What is mandatory that should be changed in the document).
+            - Extract `things_to_remove` (What is mandatory that should be removed from the document. Only include content if you have specific recommendations. Leave blank if no removals are needed.).
+            - Extract `things_to_add` (What is mandatory that should be added to the document. Only include content if you have specific recommendations. Leave blank if no additions are needed.).
+            - Extract `things_to_change` (What is mandatory that should be changed in the document. Only include content if you have specific recommendations. Leave blank if no changes are needed.).
+
+            **Important Instructions:**
+            - Only populate `things_to_remove`, `things_to_add`, and `things_to_change` when you have actual, specific recommendations.
+            - If you have no recommendations for a field, leave it completely empty (blank string).
+            - Do NOT include explanatory text like "nothing to remove" or "no changes needed".
 
             **Example Format:**
             ```yaml
-            approval: in_favor
-            things_to_remove: "Remove this and that"
-            things_to_add: "Add this and that"
-            things_to_change: "Change this and that"
-            ```
-
+            approval: abstain
+            things_to_remove: "Remove this specific section"
+            things_to_add: "Add this specific requirement"
+            things_to_change: ""
             Generate the YAML output now:
         """
+
         messages = [{"role": "user", "content": prompt}]
         response = call_llm_thinking(messages)
         print(f"\n {self.review_name} Completed! Response: {response}")
@@ -189,15 +193,24 @@ class AsyncCommitteeFlow(AsyncFlow):
         print("\n Committee Review Completed!")
         print(f"Votes - In Favor: {in_favor_count}, Against: {against_count}, Abstain: {abstain_count}")
         
-        # Evaluate committee decision
-        if against_count > 0:
+        # Evaluate committee decision based on feedback
+        has_feedback = False
+        
+        # Check if any agent provided feedback to change the document
+        for feedback_type in ["things_to_remove", "things_to_add", "things_to_change"]:
+            for feedback in shared["feedback"][feedback_type]:
+                if feedback and feedback.strip():  # Check if feedback is not empty
+                    has_feedback = True
+                    break
+            if has_feedback:
+                break
+        
+        if has_feedback:
+            print(f"Rejected by committee because agents provided feedback for changes")
             return "rejected_by_committee"
-        elif in_favor_count == 0:  # All abstained or no votes in favor
-            return "rejected_by_committee"
-        elif in_favor_count > abstain_count:
-            return "approved_by_committee"
         else:
-            return "rejected_by_committee"
+            print(f"Approved by committee because no agents requested changes")
+            return "approved_by_committee"
 
 # Create a synchronous wrapper node for the async committee flow
 class CommitteeNode(Node):

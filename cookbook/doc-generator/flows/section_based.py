@@ -119,8 +119,56 @@ class SectionDraftingNode(AsyncNode):
         # Build section-specific prompt
         writing_style = "Write the documents adhering to the writing style of Elements of Style."
         
+        # Check if this is a revision (has feedback)
+        is_revision = section_config.get("version", 0) > 0
+        has_feedback = any(
+            section_config.get("feedback", {}).get(key, []) 
+            for key in ["things_to_remove", "things_to_add", "things_to_change"]
+        )
+        
+        # Build revision context if applicable
+        revision_context = ""
+        if is_revision and has_feedback:
+            revision_context = f"""
+        <revision_context>
+        This is a REVISION of a previously drafted section. The previous version has been reviewed and requires the following changes:
+        
+        Previous Content:
+        {section_config.get("content", "No previous content available")}
+        
+        Required Changes:
+        """
+            feedback = section_config.get("feedback", {})
+            
+            if feedback.get("things_to_remove"):
+                revision_context += f"\n        Things to Remove:\n"
+                for item in feedback["things_to_remove"]:
+                    if item:  # Skip empty items
+                        revision_context += f"        - {item}\n"
+            
+            if feedback.get("things_to_add"):
+                revision_context += f"\n        Things to Add:\n"
+                for item in feedback["things_to_add"]:
+                    if item:  # Skip empty items
+                        revision_context += f"        - {item}\n"
+            
+            if feedback.get("things_to_change"):
+                revision_context += f"\n        Things to Change:\n"
+                for item in feedback["things_to_change"]:
+                    if item:  # Skip empty items
+                        revision_context += f"        - {item}\n"
+            
+            revision_context += """
+        
+        IMPORTANT: You must address ALL the feedback points above while maintaining the section's core purpose and audience focus.
+        </revision_context>
+        """
+        
+        # Adjust the main instruction based on whether this is a revision
+        main_instruction = "Revise" if is_revision and has_feedback else "Draft"
+        
         prompt = f"""
-        You are drafting the "{section_name}" section of a technical document.
+        You are {main_instruction.lower()}ing the "{section_name}" section of a technical document.
         
         <document_context>
         Topic: {context["topic"]}
@@ -133,7 +181,7 @@ class SectionDraftingNode(AsyncNode):
         Target Audience: {', '.join(section_config["audience_focus"])}
         Maximum Pages: {section_config["max_pages"]}
         </section_requirements>
-        
+        {revision_context}
         <other_sections>
         These are the other sections in the document to ensure no duplication:
         {json.dumps(prep_data["other_sections"], indent=2)}
@@ -151,12 +199,13 @@ class SectionDraftingNode(AsyncNode):
         
         <writing_style>{writing_style}</writing_style>
         
-        Draft the "{section_name}" section now. Focus on:
+        {main_instruction} the "{section_name}" section now. Focus on:
         1. Content specific to this section only
         2. Avoid duplicating content from other sections
         3. Reference other sections when appropriate
         4. Maintain consistency with document terminology
         5. Target the specified audience
+        {"6. Address ALL feedback points from the revision context" if is_revision and has_feedback else ""}
         
         At the end, provide a JSON block with key points covered in this section:
         ```json
@@ -201,10 +250,19 @@ class SectionDraftingNode(AsyncNode):
             section_data["status"] = "completed"
             section_data["version"] += 1
             
+            # Clear feedback after successful revision
+            if section_data["version"] > 1:  # This was a revision
+                section_data["feedback"] = {
+                    "things_to_remove": [],
+                    "things_to_add": [],
+                    "things_to_change": []
+                }
+                print(f"Section '{section_name}' revised (v{section_data['version']}). Word count: {exec_res['word_count']}")
+            else:
+                print(f"Section '{section_name}' completed. Word count: {exec_res['word_count']}")
+            
             # Remove from processing queue
             shared["sections_to_process"].remove(section_name)
-            
-            print(f"Section '{section_name}' completed. Word count: {exec_res['word_count']}")
         
         return None
 
@@ -398,6 +456,8 @@ class ParallelSectionFlow(AsyncFlow):
         if not sections_to_process:
             print("No sections to process")
             return None
+        
+        print(f"Sections in queue: {len(sections_to_process)} - {sections_to_process[:5]}...")  # Show first 5
             
         # Create drafting tasks for each section
         drafting_tasks = []
@@ -410,7 +470,7 @@ class ParallelSectionFlow(AsyncFlow):
         results = await asyncio.gather(*drafting_tasks)
         
         print(f"Completed {len(results)} sections in parallel")
-        return "sections_drafted"
+        return None  # Continue to next node in workflow
     
     async def _process_section(self, node, shared, section_name):
         """Process a single section"""

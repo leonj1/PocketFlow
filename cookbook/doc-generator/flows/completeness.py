@@ -246,6 +246,11 @@ class DocumentCompletenessNode(Node):
             
             # Determine if document meets completeness threshold
             if exec_res["overall_completeness"] < 70:
+                print(f"\n  Document needs improvement - triggering revision cycle")
+                print(f"  Current attempt: {shared.get('attempts', {}).get('current', 0) + 1}/{shared.get('attempts', {}).get('max', 3)}")
+                # Increment attempts
+                if "attempts" in shared:
+                    shared["attempts"]["current"] += 1
                 return "needs_improvement"
             
         return None

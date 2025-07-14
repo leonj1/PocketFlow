@@ -8,6 +8,19 @@ class ReadabilityAnalyzer:
     """Analyzes text readability using various metrics"""
     
     def __init__(self):
+        """
+flesch_kincaid: The Flesch-Kincaid Grade Level score, which estimates the US school grade level needed to understand the text
+Beginners: 0-8 (elementary to middle school level)
+Intermediate: 6-12 (middle to high school level)
+Advanced: 10-16 (high school to college level)
+Expert: 14-20 (college to graduate/professional level)
+
+flesch_ease: The Flesch Reading Ease score (0-100 scale)
+Beginners: 60-100 (easier to read)
+Intermediate: 30-70 (moderate difficulty)
+Advanced: 0-50 (more difficult)
+Expert: 0-30 (very difficult)
+        """
         self.audience_levels = {
             "beginner": {"flesch_kincaid": (0, 8), "flesch_ease": (60, 100)},
             "intermediate": {"flesch_kincaid": (6, 12), "flesch_ease": (30, 70)},

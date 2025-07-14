@@ -214,13 +214,6 @@ class EnhancedAsyncCommitteeFlow(AsyncFlow):
     async def run_async(self, shared):
         print("\n Enhanced Committee Review Starting...")
         
-        # Display completeness context
-        if "completeness_analysis" in shared:
-            score = shared["completeness_analysis"]["overall_completeness"]
-            print(f"  Document Completeness: {score}/100")
-            if score < 70:
-                print("  ⚠️  Warning: Low completeness score may affect approval")
-        
         # Create enhanced review nodes
         enhanced_reviews = [
             EnhancedAppSecurityReview(),
@@ -261,6 +254,7 @@ class EnhancedAsyncCommitteeFlow(AsyncFlow):
         
         # Decision logic with completeness consideration
         completeness_score = shared.get("completeness_analysis", {}).get("overall_completeness", 100)
+        print(f"  Document Completeness: {completeness_score}/100")
         
         if against_count > 0:
             return "rejected_by_committee"
@@ -269,10 +263,13 @@ class EnhancedAsyncCommitteeFlow(AsyncFlow):
             print("  Document rejected due to low completeness and insufficient support")
             return "rejected_by_committee"
         elif in_favor_count == 0:
+            print("  Document rejected due to no committee member approving")
             return "rejected_by_committee"
         elif in_favor_count > abstain_count:
+            print("  Document approved by committee since super-majority approved")
             return "approved_by_committee"
         else:
+            print("  Document rejected by committee since super-majority did not approve")
             return "rejected_by_committee"
 
 # Create synchronous wrapper for enhanced committee

@@ -2,6 +2,7 @@ import yaml
 import asyncio
 import os
 import glob
+import logging
 from datetime import datetime
 from pocketflow import Node, Flow
 
@@ -17,6 +18,12 @@ from flows.section_based import (
 
 # Import section-aware committee
 from flows.section_committee import section_committee_node
+
+# Import progress tracking
+from utils.progress_tracker import ProgressTracker
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 # Import completeness analysis nodes
 from flows.completeness import (
@@ -287,9 +294,35 @@ class SectionBasedLeadNode(Node):
     
     def prep(self, shared):
         print("\n Section-Based Lead Node")
+        logger = logging.getLogger(__name__)
         
-        # Check if we've exceeded max attempts
-        if shared["attempts"]["current"] >= shared["attempts"]["max"]:
+        current_attempt = shared["attempts"]["current"]
+        max_attempt = shared["attempts"]["max"]
+        
+        # Check for progress if we've done at least 3 iterations
+        if current_attempt >= 3:
+            progress_tracker = shared.get("progress_tracker")
+            if progress_tracker:
+                has_progress, reason = progress_tracker.has_progress_in_window(window_size=3)
+                
+                if has_progress:
+                    logger.info(f"Progress detected after {current_attempt} iterations: {reason}")
+                    print(f"  ✅ {reason}")
+                    print(f"  Continuing despite {current_attempt} attempts due to detected progress.")
+                else:
+                    logger.warning(f"No progress detected after {current_attempt} iterations: {reason}")
+                    print(f"  ⚠️  {reason}")
+                    
+                    # If we've hit the max attempts and no progress, abandon
+                    if current_attempt >= max_attempt:
+                        logger.error("Program terminated because progress was no longer being seen.")
+                        print("\n❌ Program terminated because progress was no longer being seen.")
+                        print(f"   Attempted {current_attempt} iterations without sufficient progress in the last 3.")
+                        return "abandon"
+        
+        # Original max attempts check (only applies if progress check didn't override)
+        elif current_attempt >= max_attempt:
+            logger.info(f"Reached maximum attempts ({max_attempt}) - checking final status")
             return "abandon"
             
         # Check if we have sections needing revision
@@ -599,6 +632,20 @@ class EndNode(Node):
             print("\n📁 Draft Versions Saved:")
             for version in shared["session"]["versions"]:
                 print(f"   - Attempt {version['attempt']}: {version['path']} (Score: {version['score']}/100)")
+        
+        # Show progress tracking summary
+        if "progress_tracker" in shared and shared["progress_tracker"]:
+            print("\n📊 Progress Tracking Report:")
+            print(shared["progress_tracker"].get_progress_summary().replace("\n", "\n   "))
+            
+            # Show final progress decision
+            has_progress, reason = shared["progress_tracker"].has_progress_in_window()
+            if not was_published and attempts_made >= 3:
+                if has_progress:
+                    print(f"\n✅ Final Decision: Would have continued due to detected progress")
+                else:
+                    print(f"\n❌ Final Decision: Terminated due to lack of progress")
+                    print("   Program terminated because progress was no longer being seen.")
             
             # Create session summary
             self._create_session_summary(shared)
@@ -722,6 +769,68 @@ class PublisherNode(Node):
         shared["output_filename"] = exec_res
         return None
 
+class ProgressRecordingNode(Node):
+    """Records progress metrics after each iteration for tracking"""
+    
+    def prep(self, shared):
+        logger = logging.getLogger(__name__)
+        
+        # Only record if we have committee results and a progress tracker
+        if "progress_tracker" not in shared:
+            return None
+            
+        # Gather data to record
+        iteration_num = shared["attempts"]["current"]
+        committee_votes = shared.get("approvals", {
+            "in_favor": 0,
+            "against": 0,
+            "abstain": 0
+        })
+        section_statuses = shared.get("sections", {})
+        completeness_score = None
+        
+        if "completeness_analysis" in shared:
+            completeness_score = shared["completeness_analysis"].get("overall_completeness")
+        
+        return {
+            "iteration_num": iteration_num,
+            "committee_votes": committee_votes,
+            "section_statuses": section_statuses,
+            "completeness_score": completeness_score
+        }
+    
+    def exec(self, prep_data):
+        if not prep_data:
+            return None
+            
+        # This is handled by post() to ensure we have access to shared
+        return prep_data
+    
+    def post(self, shared, prep_res, exec_res):
+        if not exec_res:
+            return None
+            
+        logger = logging.getLogger(__name__)
+        progress_tracker = shared["progress_tracker"]
+        
+        # Record the iteration results
+        progress_tracker.record_iteration_results(
+            exec_res["iteration_num"],
+            exec_res["committee_votes"],
+            exec_res["section_statuses"],
+            exec_res["completeness_score"]
+        )
+        
+        # Log progress summary
+        print("\n📊 Progress Tracking Update:")
+        has_progress, reason = progress_tracker.has_progress_in_window()
+        if has_progress:
+            print(f"  ✅ {reason}")
+        else:
+            print(f"  ⚠️  {reason}")
+        
+        return None
+
 class DraftVersioningNode(Node):
     """Saves every version of the document throughout the generation process"""
     
@@ -747,7 +856,9 @@ class DraftVersioningNode(Node):
             "document": shared.get("document", ""),
             "sections": shared.get("sections", {}),
             "completeness": shared.get("completeness_analysis", {}),
-            "feedback": shared.get("feedback", {})
+            "feedback": shared.get("feedback", {}),
+            "approvals": shared.get("approvals", {}),
+            "progress_tracker": shared.get("progress_tracker")
         }
     
     def exec(self, prep_data):
@@ -808,6 +919,18 @@ class DraftVersioningNode(Node):
             with open(feedback_path, "w") as f:
                 yaml.dump(prep_data["feedback"], f, default_flow_style=False)
         
+        # Save progress tracking data
+        if prep_data["progress_tracker"]:
+            progress_path = f"{base_dir}/progress_v{prep_data['attempt']}.md"
+            with open(progress_path, "w") as f:
+                f.write(f"# Progress Report - Attempt {prep_data['attempt']}\n\n")
+                f.write(f"## Committee Votes\n")
+                f.write(f"- In Favor: {prep_data['approvals']['in_favor']}\n")
+                f.write(f"- Against: {prep_data['approvals']['against']}\n")
+                f.write(f"- Abstain: {prep_data['approvals']['abstain']}\n\n")
+                f.write(f"## Progress Summary\n\n")
+                f.write(prep_data["progress_tracker"].get_progress_summary())
+        
         return {
             "saved_path": base_dir,
             "attempt": prep_data["attempt"],
@@ -842,6 +965,7 @@ def build_section_workflow():
     end_node = EndNode()
     publisher_node = PublisherNode()
     draft_versioning_node = DraftVersioningNode()
+    progress_recording_node = ProgressRecordingNode()
     
     # Build the section-based workflow with completeness checks
     
@@ -870,14 +994,17 @@ def build_section_workflow():
     # Document completeness analysis routes based on score
     # IMPORTANT: No default path - must explicitly route based on score
     document_completeness_node - "generate_report" >> completeness_report_node  # High score path (>= 70)
-    document_completeness_node - "needs_improvement" >> section_revision_node  # Low score path (< 70)
+    document_completeness_node - "needs_improvement" >> progress_recording_node  # Low score path (< 70)
     
     # After report generation, proceed to committee
     completeness_report_node >> section_committee_node
     
     # Committee review with section awareness
     section_committee_node - "approved_by_committee" >> publisher_node
-    section_committee_node - "rejected_by_committee" >> section_revision_node
+    section_committee_node - "rejected_by_committee" >> progress_recording_node
+    
+    # Progress recording before revision
+    progress_recording_node >> section_revision_node
     
     # Revision handling
     section_revision_node >> section_lead_node  # Loop back to reprocess
@@ -915,7 +1042,8 @@ def main():
             "in_favor": 0,
             "against": 0,
             "abstain": 0
-        }
+        },
+        "progress_tracker": ProgressTracker()
         # Note: "sections" will be initialized by SectionCoordinatorNode
         # Note: "document" will be created by DocumentAssemblerNode
     }

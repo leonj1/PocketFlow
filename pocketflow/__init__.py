@@ -1,6 +1,39 @@
 import asyncio, warnings, copy, time
 
+def _validate_port_contracts(src, tgt):
+    """Validate that src.Output fields satisfy tgt.Input requirements at graph build time."""
+    src_output = getattr(src.__class__, 'Output', None)
+    tgt_input = getattr(tgt.__class__, 'Input', None)
+    if src_output is None or tgt_input is None: return
+    try: from pydantic import BaseModel
+    except ImportError: return
+    if not (isinstance(src_output, type) and issubclass(src_output, BaseModel)): return
+    if not (isinstance(tgt_input, type) and issubclass(tgt_input, BaseModel)): return
+    src_fields = src_output.model_fields
+    tgt_fields = tgt_input.model_fields
+    missing = [f for f in tgt_fields if f not in src_fields]
+    if missing:
+        raise TypeError(
+            f"Port contract violation: {src.__class__.__name__}.Output is missing "
+            f"fields required by {tgt.__class__.__name__}.Input: {missing}"
+        )
+    for name in tgt_fields:
+        if name in src_fields:
+            src_type = src_fields[name].annotation
+            tgt_type = tgt_fields[name].annotation
+            if src_type is not tgt_type:
+                try:
+                    if isinstance(src_type, type) and isinstance(tgt_type, type) and issubclass(src_type, tgt_type): continue
+                except TypeError: pass
+                raise TypeError(
+                    f"Port contract violation: field '{name}' type mismatch between "
+                    f"{src.__class__.__name__}.Output ({src_type}) and "
+                    f"{tgt.__class__.__name__}.Input ({tgt_type})"
+                )
+
 class BaseNode:
+    Input = None
+    Output = None
     def __init__(self): self.params,self.successors={},{}
     def set_params(self,params): self.params=params
     def next(self,node,action="default"):
@@ -14,7 +47,9 @@ class BaseNode:
     def run(self,shared): 
         if self.successors: warnings.warn("Node won't run successors. Use Flow.")  
         return self._run(shared)
-    def __rshift__(self,other): return self.next(other)
+    def __rshift__(self,other):
+        _validate_port_contracts(self, other)
+        return self.next(other)
     def __sub__(self,action):
         if isinstance(action,str): return _ConditionalTransition(self,action)
         raise TypeError("Action must be a string")

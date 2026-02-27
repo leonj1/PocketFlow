@@ -18,18 +18,17 @@ def _validate_port_contracts(src, tgt):
             f"fields required by {tgt.__class__.__name__}.Input: {missing}"
         )
     for name in tgt_fields:
-        if name in src_fields:
-            src_type = src_fields[name].annotation
-            tgt_type = tgt_fields[name].annotation
-            if src_type is not tgt_type:
-                try:
-                    if isinstance(src_type, type) and isinstance(tgt_type, type) and issubclass(src_type, tgt_type): continue
-                except TypeError: pass
-                raise TypeError(
-                    f"Port contract violation: field '{name}' type mismatch between "
-                    f"{src.__class__.__name__}.Output ({src_type}) and "
-                    f"{tgt.__class__.__name__}.Input ({tgt_type})"
-                )
+        src_type = src_fields[name].annotation
+        tgt_type = tgt_fields[name].annotation
+        if src_type != tgt_type:
+            try:
+                if isinstance(src_type, type) and isinstance(tgt_type, type) and issubclass(src_type, tgt_type): continue
+            except TypeError: pass
+            raise TypeError(
+                f"Port contract violation: field '{name}' type mismatch between "
+                f"{src.__class__.__name__}.Output ({src_type}) and "
+                f"{tgt.__class__.__name__}.Input ({tgt_type})"
+            )
 
 class BaseNode:
     Input = None

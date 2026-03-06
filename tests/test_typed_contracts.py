@@ -41,6 +41,23 @@ class AnimalOutput(BaseModel):
 class AnimalInput(BaseModel):
     pet: Animal
 
+class UserProfile(BaseModel):
+    first_name: str
+    last_name: str
+    email: str
+
+class UserOutput(BaseModel):
+    user: UserProfile
+
+class UserInput(BaseModel):
+    user: UserProfile
+
+class InvalidUserOutput(BaseModel):
+    user: str
+
+class UserGreetingOutput(BaseModel):
+    greeting: str
+
 
 # --- Typed node definitions ---
 
@@ -116,6 +133,48 @@ class AnimalInputNode(Node):
 
 class TextInputNode(Node):
     Input = TextInput
+
+
+class BuildUserProfileNode(Node):
+    Output = UserOutput
+
+    def prep(self, shared):
+        return (
+            shared["first_name"],
+            shared["last_name"],
+            shared["email"],
+        )
+
+    def exec(self, prep_res):
+        first_name, last_name, email = prep_res
+        return {
+            "user": UserProfile(
+                first_name=first_name,
+                last_name=last_name,
+                email=email,
+            )
+        }
+
+    def post(self, shared, prep_res, exec_res):
+        shared.update(exec_res)
+
+
+class GreetUserNode(Node):
+    Input = UserInput
+    Output = UserGreetingOutput
+
+    def prep(self, shared):
+        return shared["user"]
+
+    def exec(self, prep_res):
+        return {"greeting": f"Hello {prep_res.first_name} {prep_res.last_name}"}
+
+    def post(self, shared, prep_res, exec_res):
+        shared.update(exec_res)
+
+
+class InvalidUserOutputNode(Node):
+    Output = InvalidUserOutput
 
 
 # --- Tests ---
@@ -248,6 +307,45 @@ class TestSubtypeCompatibility:
         b = AnimalInputNode()
         result = a >> b
         assert result is b
+
+
+class TestComplexTypedModels:
+    """Test typed contracts with nested/complex Pydantic models."""
+
+    def test_complex_model_compatible_wiring(self):
+        producer = BuildUserProfileNode()
+        consumer = GreetUserNode()
+
+        result = producer >> consumer
+
+        assert result is consumer
+
+    def test_complex_model_lifecycle(self):
+        producer = BuildUserProfileNode()
+        consumer = GreetUserNode()
+        producer >> consumer
+
+        flow = Flow(start=producer)
+        shared = {
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "email": "ada@example.com",
+        }
+
+        flow.run(shared)
+
+        assert isinstance(shared["user"], UserProfile)
+        assert shared["user"].first_name == "Ada"
+        assert shared["user"].last_name == "Lovelace"
+        assert shared["user"].email == "ada@example.com"
+        assert shared["greeting"] == "Hello Ada Lovelace"
+
+    def test_complex_model_type_mismatch(self):
+        producer = InvalidUserOutputNode()
+        consumer = GreetUserNode()
+
+        with pytest.raises(TypeError, match="type mismatch"):
+            producer >> consumer
 
 
 class TestLifecycle:

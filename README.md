@@ -26,6 +26,17 @@ Get started with Pocket Flow:
 - 🎉 Join our [Discord](https://discord.gg/hUHHE9Sa6T) to connect with other developers building with Pocket Flow!
 - 🎉 Pocket Flow now has [Typescript](https://github.com/The-Pocket/PocketFlow-Typescript), [Java](https://github.com/The-Pocket/PocketFlow-Java), [C++](https://github.com/The-Pocket/PocketFlow-CPP), [Go](https://github.com/The-Pocket/PocketFlow-Go), [Rust](https://github.com/The-Pocket/PocketFlow-Rust) and [PHP](https://github.com/The-Pocket/PocketFlow-PHP) versions!
 
+## Fail-Fast Async Parallelism
+
+`AsyncParallelBatchNode` and `AsyncParallelBatchFlow` support `fail_fast=True` to cancel remaining parallel work as soon as one task fails.
+
+```python
+node = AsyncParallelBatchNode(fail_fast=True)
+flow = AsyncParallelBatchFlow(start=node, fail_fast=True)
+```
+
+By default, `fail_fast=False`, which keeps the existing `asyncio.gather()` behavior for backward compatibility.
+
 ## Why Pocket Flow?
 
 Current LLM frameworks are bloated... You only need 100 lines for LLM Framework!
@@ -131,5 +142,4 @@ From there, it's easy to implement popular design patterns like ([Multi-](https:
   - Check out [my YouTube](https://www.youtube.com/@ZacharyLLM?sub_confirmation=1) for video tutorial on how some apps above are made!
 
   - Want to build your own LLM App? Read this [post](https://zacharyhuang.substack.com/p/agentic-coding-the-most-fun-way-to)! Start with [this template](https://github.com/The-Pocket/PocketFlow-Template-Python)!
-
 

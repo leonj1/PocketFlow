@@ -111,7 +111,14 @@ class AsyncBatchNode(AsyncNode,BatchNode):
     async def _exec(self,items): return [await super(AsyncBatchNode,self)._exec(i) for i in items]
 
 class AsyncParallelBatchNode(AsyncNode,BatchNode):
-    async def _exec(self,items): return await asyncio.gather(*(super(AsyncParallelBatchNode,self)._exec(i) for i in items))
+    def __init__(self,max_retries=1,wait=0,fail_fast=False):
+        super().__init__(max_retries=max_retries,wait=wait); self.fail_fast=fail_fast
+    async def _exec(self,items):
+        if self.fail_fast:
+            async with asyncio.TaskGroup() as tg:
+                tasks=[tg.create_task(super(AsyncParallelBatchNode,self)._exec(i)) for i in items]
+            return [t.result() for t in tasks]
+        return await asyncio.gather(*(super(AsyncParallelBatchNode,self)._exec(i) for i in items))
 
 class AsyncFlow(Flow,AsyncNode):
     async def _orch_async(self,shared,params=None):
@@ -128,7 +135,13 @@ class AsyncBatchFlow(AsyncFlow,BatchFlow):
         return await self.post_async(shared,pr,None)
 
 class AsyncParallelBatchFlow(AsyncFlow,BatchFlow):
+    def __init__(self,start=None,fail_fast=False):
+        super().__init__(start=start); self.fail_fast=fail_fast
     async def _run_async(self,shared): 
         pr=await self.prep_async(shared) or []
-        await asyncio.gather(*(self._orch_async(shared,{**self.params,**bp}) for bp in pr))
+        if self.fail_fast:
+            async with asyncio.TaskGroup() as tg:
+                for bp in pr: tg.create_task(self._orch_async(shared,{**self.params,**bp}))
+        else:
+            await asyncio.gather(*(self._orch_async(shared,{**self.params,**bp}) for bp in pr))
         return await self.post_async(shared,pr,None)

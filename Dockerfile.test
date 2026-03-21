@@ -2,11 +2,17 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+RUN groupadd -r testuser && useradd -r -g testuser testuser
+
 COPY setup.py ./
 
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir . pytest pytest-asyncio pydantic
 
 COPY . .
+
+RUN chown -R testuser:testuser /app
+
+USER testuser
 
 CMD ["pytest", "-v"]
